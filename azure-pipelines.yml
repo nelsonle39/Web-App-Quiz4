@@ -1,34 +1,32 @@
-# ASP.NET
-# Build and test ASP.NET projects.
-# Add steps that publish symbols, save build artifacts, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/apps/aspnet/build-aspnet-4
-
 trigger:
-- main
+  branches:
+    include:
+      - main
 
 pool:
   vmImage: 'windows-latest'
 
-variables:
-  solution: '**/*.sln'
-  buildPlatform: 'Any CPU'
-  buildConfiguration: 'Release'
-
 steps:
-- task: NuGetToolInstaller@1
+  - task: UseDotNet@2
+    inputs:
+      packageType: sdk
+      version: '6.x' 
+      installationPath: $(Agent.ToolsDirectory)/dotnet
 
-- task: NuGetCommand@2
-  inputs:
-    restoreSolution: '$(solution)'
+  - script: |
+      dotnet restore
+    displayName: 'Restore Dependencies'
 
-- task: VSBuild@1
-  inputs:
-    solution: '$(solution)'
-    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactStagingDirectory)"'
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
+  - script: |
+      dotnet build --configuration Release
+    displayName: 'Build Project'
 
-- task: VSTest@2
-  inputs:
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
+  - script: |
+      dotnet publish -c Release -o $(Build.ArtifactStagingDirectory)
+    displayName: 'Publish Build'
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      pathToPublish: $(Build.ArtifactStagingDirectory)
+      artifactName: 'webapp-artifact'
+      publishLocation: 'Container'
